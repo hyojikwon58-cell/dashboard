@@ -1045,15 +1045,12 @@ function rPm(){document.getElementById('pmD').innerHTML=Array.from({length:8},(_
 function saveDay(){ openRetro(); }
 function _doSaveDay(mood, good, bad, carryIds){
   const today=dk();
-  const entry={date:today,tasks:{gp:[...S.tasks.gp],sj:[...S.tasks.sj]},clients:[...S.clients],clT:JSON.parse(JSON.stringify(S.clT)),rtns:{...S.rtns},pomos:S.pomos,retro:{mood,good,bad}};
-  const idx=S.hist.findIndex(h=>h.date===today);
-  if(idx>=0)S.hist[idx]=entry;else S.hist.unshift(entry);
-  // carryover: mark selected undone tasks with tomorrow deadline
   const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
   const tmr=tomorrow.getFullYear()+'-'+p2(tomorrow.getMonth()+1)+'-'+p2(tomorrow.getDate());
+  // mark selected tasks as carried FIRST
   carryIds.forEach(key=>{
-    const [proj,idStr,clientName]=key.split('|');
-    const id=parseInt(idStr);
+    const parts=key.split('§');
+    const proj=parts[0],id=parseInt(parts[1]),clientName=parts[2]||'';
     if(proj==='cl'){
       const t=(S.clT[clientName]||[]).find(t=>t.id===id);
       if(t){t.deadline=tmr;t._carried=true;}
@@ -1062,6 +1059,10 @@ function _doSaveDay(mood, good, bad, carryIds){
       if(t){t.deadline=tmr;t._carried=true;}
     }
   });
+  // THEN save to history (so _carried is included)
+  const entry={date:today,tasks:{gp:JSON.parse(JSON.stringify(S.tasks.gp)),sj:JSON.parse(JSON.stringify(S.tasks.sj))},clients:[...S.clients],clT:JSON.parse(JSON.stringify(S.clT)),rtns:{...S.rtns},pomos:S.pomos,retro:{mood,good,bad}};
+  const idx=S.hist.findIndex(h=>h.date===today);
+  if(idx>=0)S.hist[idx]=entry;else S.hist.unshift(entry);
   sv();rHist();rHist2();
   ['gp','sj'].forEach(rT);
   S.clients.forEach(name=>renderClTL(name));
@@ -1528,10 +1529,10 @@ function openRetro(){
   document.querySelectorAll('.retro-mood-btn').forEach(b=>b.classList.remove('on'));
   // collect undone tasks
   const undone=[];
-  (S.tasks.gp||[]).filter(t=>!t.done).forEach(t=>undone.push({key:'gp|'+t.id+'|',text:t.text,proj:'gp',tag:'GP',tagClass:'proj-cat-gp'}));
-  (S.tasks.sj||[]).filter(t=>!t.done).forEach(t=>undone.push({key:'sj|'+t.id+'|',text:t.text,proj:'sj',tag:'수저',tagClass:'proj-cat-sj'}));
+  (S.tasks.gp||[]).filter(t=>!t.done).forEach(t=>undone.push({key:'gp§'+t.id+'§',text:t.text,proj:'gp',tag:'GP',tagClass:'proj-cat-gp'}));
+  (S.tasks.sj||[]).filter(t=>!t.done).forEach(t=>undone.push({key:'sj§'+t.id+'§',text:t.text,proj:'sj',tag:'수저',tagClass:'proj-cat-sj'}));
   S.clients.forEach(name=>{
-    (S.clT[name]||[]).filter(t=>!t.done).forEach(t=>undone.push({key:'cl|'+t.id+'|'+name,text:t.text,proj:'cl',tag:name,tagClass:'proj-cat-cl'}));
+    (S.clT[name]||[]).filter(t=>!t.done).forEach(t=>undone.push({key:'cl§'+t.id+'§'+name,text:t.text,proj:'cl',tag:name,tagClass:'proj-cat-cl'}));
   });
   const wrap=document.getElementById('retroCarryWrap');
   const list=document.getElementById('retroCarryList');
@@ -1539,7 +1540,7 @@ function openRetro(){
     wrap.style.display='';
     list.innerHTML=undone.map(u=>`
       <div class="retro-carry-item">
-        <input type="checkbox" class="retro-carry-chk" id="carry-${u.key}" value="${u.key}" checked>
+        <input type="checkbox" class="retro-carry-chk" id="carry-${u.key.replace(/§/g,'_')}" value="${u.key}" checked>
         <label class="retro-carry-txt" for="carry-${u.key}">${u.text}</label>
         <span class="retro-carry-tag ${u.tagClass}">${u.tag}</span>
       </div>`).join('');
