@@ -427,7 +427,10 @@ body {
     <button class="btn on" id="btnToday" onclick="setView('today')">오늘</button>
     <button class="btn" id="btnProj" onclick="setView('projects')">프로젝트</button>
     <button class="btn" id="btnHist" onclick="setView('history')">히스토리</button>
-    <button class="btn" onclick="saveDay()">📁 오늘 저장</button>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <button class="btn" id="saveDateBtn" onclick="openSaveDatePick(this)" style="font-size:11px;color:var(--mu);padding:7px 10px;">📅 <span id="saveDateLabel">오늘</span></button>
+      <button class="btn" onclick="saveDay()">📁 저장</button>
+    </div>
   </div>
 </div>
 
@@ -1044,7 +1047,9 @@ function rPm(){document.getElementById('pmD').innerHTML=Array.from({length:8},(_
 // SAVE / HISTORY
 function saveDay(){ openRetro(); }
 function _doSaveDay(mood, good, bad, carryIds){
-  const today=dk();
+  const today = saveTargetDate || dk();
+  saveTargetDate = null;
+  document.getElementById('saveDateLabel').textContent = '오늘';
   const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
   const tmr=tomorrow.getFullYear()+'-'+p2(tomorrow.getMonth()+1)+'-'+p2(tomorrow.getDate());
   // mark selected tasks as carried FIRST
@@ -1519,6 +1524,42 @@ function checkCarryoverBanner(){
   }
 }
 
+// SAVE DATE
+let saveTargetDate = null; // null = today
+
+function openSaveDatePick(btn) {
+  const popup = document.getElementById('saveDpOverlay');
+  const inp = document.getElementById('saveDpInput');
+  inp.value = saveTargetDate || dk();
+  const rect = btn.getBoundingClientRect();
+  document.querySelector('#saveDpOverlay .qa-popup').style.top = (rect.bottom + window.scrollY + 6) + 'px';
+  document.querySelector('#saveDpOverlay .qa-popup').style.right = '24px';
+  document.querySelector('#saveDpOverlay .qa-popup').style.left = 'auto';
+  popup.classList.add('show');
+}
+function closeSaveDatePick() {
+  document.getElementById('saveDpOverlay').classList.remove('show');
+}
+function setSaveDate(offset) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  document.getElementById('saveDpInput').value = d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+}
+function confirmSaveDate() {
+  const val = document.getElementById('saveDpInput').value;
+  saveTargetDate = val || null;
+  const label = document.getElementById('saveDateLabel');
+  if (!val || val === dk()) {
+    saveTargetDate = null;
+    label.textContent = '오늘';
+  } else {
+    const d = new Date(val);
+    const days = ['일','월','화','수','목','금','토'];
+    label.textContent = val.slice(5).replace('-','/') + ' ' + days[d.getDay()];
+  }
+  closeSaveDatePick();
+}
+
 // RETRO
 let retroMoodVal = '';
 function openRetro(){
@@ -1772,6 +1813,23 @@ checkCarryoverBanner();
     <div class="modal-btns">
       <button class="modal-btn cancel" onclick="closeRetro()">취소</button>
       <button class="modal-btn save" onclick="confirmRetro()">저장하고 이월 💾</button>
+    </div>
+  </div>
+</div>
+<!-- SAVE DATE PICKER -->
+<div class="qa-overlay" id="saveDpOverlay" onclick="if(event.target===this)closeSaveDatePick()">
+  <div class="qa-popup" style="width:260px;">
+    <div class="qa-title" style="margin-bottom:8px;">📅 저장 날짜 선택</div>
+    <input type="date" id="saveDpInput" class="modal-input" style="margin-bottom:10px;font-size:13px;">
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+      <button class="dp-quick" onclick="setSaveDate(0)">오늘</button>
+      <button class="dp-quick" onclick="setSaveDate(-1)">어제</button>
+      <button class="dp-quick" onclick="setSaveDate(-2)">2일 전</button>
+      <button class="dp-quick" onclick="setSaveDate(-3)">3일 전</button>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button class="modal-btn cancel" style="flex:1;padding:8px;" onclick="closeSaveDatePick()">취소</button>
+      <button class="modal-btn save" style="flex:1;padding:8px;" onclick="confirmSaveDate()">확인</button>
     </div>
   </div>
 </div>
